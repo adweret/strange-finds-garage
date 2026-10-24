@@ -1,0 +1,59 @@
+{
+  "name": "Strange Finds Garage",
+  "tree": {
+    "$className": "DataModel",
+    "ReplicatedStorage": {
+      "Garage": {
+        "$path": "src/shared"
+      }
+    },
+    "ServerScriptService": {
+      "GarageServer": {
+        "$path": "src/server"
+      },
+      "Vendor": {
+        "$className": "Folder",
+        "ProfileStore": {
+          "$path": "vendor/ProfileStore"
+        }
+      }
+    },
+    "StarterPlayer": {
+      "$properties": {
+        "CameraMaxZoomDistance": 40,
+        "CameraMinZoomDistance": 6
+      },
+      "StarterPlayerScripts": {
+        "GarageClient": {
+          "$path": "src/client"
+        }
+      }
+    },
+    "Workspace": {
+      "$properties": {
+        "FilteringEnabled": true,
+        "StreamingEnabled": true
+      }
+    },
+    "Lighting": {
+      "$properties": {
+        "ClockTime": 15,
+        "Brightness": 2,
+        "GlobalShadows": true
+      }
+    },
+    "SoundService": {
+      "$properties": {
+        "RespectFilteringEnabled": true
+      }
+    },
+    "ServerStorage": {
+      "TestEZ": {
+        "$path": "vendor/TestEZ"
+      },
+      "GarageTests": {
+        "$path": "tests"
+      }
+    }
+  }
+}

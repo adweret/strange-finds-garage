@@ -1,0 +1,20 @@
+return function()
+	local RateLimiter = require(game:GetService("ReplicatedStorage").Garage.RateLimiter)
+	describe("Request frequency", function()
+		it("limits bursts and refills using the server clock", function()
+			local limiter = RateLimiter.new(2, 3)
+			for _ = 1, 3 do
+				expect(limiter:allow("p1", 0)).to.equal(true)
+			end
+			expect(limiter:allow("p1", 0)).to.equal(false)
+			expect(limiter:allow("p1", 0.5)).to.equal(true)
+			expect(limiter:allow("p1", 0.5)).to.equal(false)
+		end)
+		it("keeps players independent", function()
+			local limiter = RateLimiter.new(1, 1)
+			expect(limiter:allow("a", 0)).to.equal(true)
+			expect(limiter:allow("a", 0)).to.equal(false)
+			expect(limiter:allow("b", 0)).to.equal(true)
+		end)
+	end)
+end
