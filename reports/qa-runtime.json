@@ -1,0 +1,18 @@
+{
+  "date": "2026-10-25",
+  "manifestSha256": "2929C4FBFBBDD7F861CBD50A44D0CFA3F16799E6DAF724FE9A4D8F56745B9960",
+  "environment": "Studio single Play, Client/Server, ProfileStore Mock",
+  "unit": {"passed":59,"failed":0,"skipped":0},
+  "malformedIntents": {"count":7,"coinsBefore":50,"coinsAfter":50,"partsBefore":8,"partsAfter":8,"itemsAfter":0},
+  "toycarCycle": {"realStageSeconds":5,"stages":3,"earlyFinishRejected":true,"registered":true,"finalCoins":85,"finalParts":7,"repeatSaleRejected":true},
+  "boundInstallRegression": {"reason":"repair_busy","ordinaryKept":true,"boundKept":true,"repairKept":true,"parts":8,"installAfterStageSuccess":true},
+  "critical": {"buyRejected":"save_unavailable","blockedCoins":85,"blockedParts":8,"warningVisible":true,"recoveredCoinsAfterBuy":75,"recoveredPartsAfterBuy":9},
+  "cargo": {"manualNearCartCapacity":1,"cartPickupCapacity":3,"farUnloadRejected":"bring_vehicle","retainedCargo":1,"cartDistanceAtDelivery":12.47010326385498,"itemsAdded":1,"repeatDepositRejected":"no_cargo"},
+  "ui": {"preset":"Samsung Galaxy A16","orientation":"LandscapeLeft","viewport":[685,338],"languages":["ru","en"],"modalTouchGuiEnabled":false,"canvasHeight":270,"windowHeight":239.199982,"closeClick":"blocked: tool success without activation"},
+  "sessionEnd": {"serverPlayersAfterWait":0,"kickMessage":"Сессия прогресса завершена. Войди снова. / Progress session ended. Please rejoin."},
+  "finalStudioMode":"Edit",
+  "finalSimulator":"default",
+  "realDataStoreTested":false,
+  "realPhoneTested":false,
+  "multiplayerCurrentRunBy":"coordinator separately"
+}

@@ -1,0 +1,14 @@
+{
+  "accessChanged": false,
+  "status": "published",
+  "testModulesInLoadedCloudPlace": false,
+  "build": "0.2.0-alpha",
+  "owner": "personal account",
+  "placeId": "115227968642980",
+  "releaseSha256": "92F337F354CEBB7F5C0BACF95A4595567078BB2629E98D785E3930C47B715D90",
+  "realDataStoreVerified": false,
+  "universeId": "10772715396",
+  "date": "2026-10-25",
+  "publishedAtUtc": "2026-10-25T08:49:52.349Z",
+  "accessObservedBeforeUpload": "Private"
+}

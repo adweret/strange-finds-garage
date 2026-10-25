@@ -1,6 +1,23 @@
 return function()
 	local Schema = require(game:GetService("ReplicatedStorage").Garage.Schema)
 	describe("Profile schema", function()
+		it("rejects malformed equipment and project timers", function()
+			local data = Schema.new()
+			data.equipment.robot = { id = "wrong", kind = "robot", stage = 0, bound = true }
+			expect(Schema.migrate(data)).to.equal(nil)
+			data = Schema.new()
+			data.vehicles.cart = { readyAt = math.huge }
+			expect(Schema.migrate(data)).to.equal(nil)
+		end)
+		it("keeps gear and currency while removing stale queue references", function()
+			local data = Schema.new()
+			data.equipment.radio = { id = "equipment_radio", kind = "radio", stage = 1, bound = true }
+			data.quests.repairQueue = { "missing", "equipment_radio", "equipment_radio" }
+			local migrated = Schema.migrate(data)
+			expect(#migrated.quests.repairQueue).to.equal(1)
+			expect(migrated.quests.repairQueue[1]).to.equal("equipment_radio")
+			expect(migrated.coins).to.equal(50)
+		end)
 		it("preserves currency and items during migration", function()
 			local old = Schema.new()
 			old.schemaVersion = nil

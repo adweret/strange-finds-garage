@@ -1,0 +1,14 @@
+{
+  "sourceManifestSha256": "2929C4FBFBBDD7F861CBD50A44D0CFA3F16799E6DAF724FE9A4D8F56745B9960",
+  "date": "2026-10-25",
+  "rojoTests": "passed",
+  "releaseSha256": "92F337F354CEBB7F5C0BACF95A4595567078BB2629E98D785E3930C47B715D90",
+  "stylua": "passed",
+  "orientation": "LandscapeSensor",
+  "testSha256": "802EDFF9A1FA4E8B7F0EE57695FA3C6AAF8734D6692DCE77CD29F9093C734C0F",
+  "rojoRelease": "passed",
+  "seleneSource": "passed",
+  "seleneTests": "passed",
+  "releaseTestModules": "absent",
+  "finalManifestSha256": "258EEC618501DEBDFEE3700A7CD0F64CF719B4BA329908B5B1DE99E59867BA78"
+}

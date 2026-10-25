@@ -1,7 +1,7 @@
 local Config = {
-	Version = "0.1.0-prototype",
+	Version = "0.2.0-alpha",
 	Environment = "alpha",
-	Prototype = true,
+	Prototype = false,
 	MaxPlayers = 6,
 	InteractionDistance = 10,
 	ServerDistance = 13,

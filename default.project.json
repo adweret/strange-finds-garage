@@ -19,6 +19,7 @@
     "Lighting": {
       "$properties": { "ClockTime": 15, "Brightness": 2, "GlobalShadows": true }
     },
-    "SoundService": { "$properties": { "RespectFilteringEnabled": true } }
+    "SoundService": { "$properties": { "RespectFilteringEnabled": true } },
+    "StarterGui": { "$properties": { "ScreenOrientation": "LandscapeSensor" } }
   }
 }

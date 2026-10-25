@@ -13,6 +13,11 @@ All current buildings, island geometry, prop models and UI are original
 procedural Parts / Roblox UI. No external music, uploaded textures, branded
 characters or Creator Store models have been incorporated.
 
+UI clicks and caretaker footsteps use Roblox client-bundled sounds through
+`rbxasset://sounds/volume_slider.ogg` and
+`rbxasset://sounds/action_footsteps_plastic.mp3`. They are referenced within
+the Roblox runtime, not copied or distributed as separate audio files.
+
 roblox-ai is a reference library, not an asset license. No image from it is
 redistributed or embedded. RigDirectors is not a dependency of this build.
 

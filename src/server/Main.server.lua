@@ -6,6 +6,8 @@ local Config = require(Shared.Config)
 local Schema = require(Shared.Schema)
 local Rules = require(Shared.Rules).new(Config)
 local RateLimiter = require(Shared.RateLimiter)
+local RequestGuard = require(Shared.RequestGuard)
+local CarryVisual = require(script.Parent.CarryVisual)
 local Profiles = require(script.Parent.Profiles)
 local World = require(script.Parent.World)
 
@@ -30,10 +32,11 @@ local cargo = {}
 local tutorialModels = {}
 local visuals = {}
 local random = Random.new()
+local expansion
 
 World:build()
 workspace:SetAttribute("GarageBuild", Config.Version)
-workspace:SetAttribute("Prototype", true)
+workspace:SetAttribute("Prototype", Config.Prototype)
 
 local function id()
 	return HttpService:GenerateGUID(false)
@@ -47,15 +50,43 @@ local function push(player)
 	payload.cargo = Schema.clone(cargo[player] or {})
 	payload.capacity = Rules:capacity(data, false)
 	payload.critical = Profiles.critical
-	payload.prototype = true
+	payload.prototype = Config.Prototype
+	payload.cargoCapacity = 1
 	payload.mock = player:GetAttribute("StudioMock")
+	if expansion then
+		expansion:decorateState(player, payload)
+	end
+	CarryVisual:update(player, payload.cargo[1], expansion and expansion.vehicles:hasVehicleCargo(player))
 	state:FireClient(player, payload)
 end
-Profiles:onChange(push)
+Profiles:onChange(function(player)
+	if expansion then
+		expansion:onChanged(player)
+	end
+	push(player)
+end)
+
+if not Config.Prototype then
+	expansion = require(script.Parent.Expansion).start({
+		world = World,
+		profiles = Profiles,
+		rules = Rules,
+		cargo = cargo,
+		remotes = remotes,
+		push = push,
+		notice = notice,
+		allowRequest = function(player)
+			return limiter:allow(player, os.clock())
+		end,
+	})
+end
 
 local function report(player, ok, reason)
 	if not ok then
 		notice:FireClient(player, reason or "invalid_action")
+		if expansion and reason == "storage_full" then
+			expansion.telemetry:blocked(player)
+		end
 	end
 	push(player)
 	return ok
@@ -79,7 +110,13 @@ local function collect(player, spot, personal)
 	if not spot.model or not spot.model.Parent or not World:near(player, spot.model.PrimaryPart) then
 		return report(player, false, "too_far")
 	end
-	if #cargo[player] >= 1 then
+	if expansion then
+		local allowed, reason = expansion.vehicles:canCollect(player)
+		if not allowed then
+			return report(player, false, reason)
+		end
+		expansion.vehicles:claimCargo(player)
+	elseif #cargo[player] >= 1 then
 		return report(player, false, "cargo_full")
 	end
 	-- Claim and cargo insertion are synchronous: a second Triggered cannot claim this ID.
@@ -91,6 +128,9 @@ local function collect(player, spot, personal)
 	)
 	spot.readyAt = os.clock() + Config.RespawnSeconds
 	model:Destroy()
+	if expansion then
+		expansion:touch(player)
+	end
 	push(player)
 	notice:FireClient(player, "found_" .. spot.kind)
 end
@@ -149,10 +189,7 @@ local function dispatch(player, action, args)
 	if not limiter:allow(player, os.clock()) then
 		return
 	end
-	if type(action) ~= "string" or #action > 24 then
-		return
-	end
-	if args ~= nil and type(args) ~= "table" then
+	if not RequestGuard.valid(action, args) then
 		return
 	end
 	args = args or {}
@@ -169,23 +206,44 @@ local function dispatch(player, action, args)
 			Profiles:mutate(player, function(data)
 				data.language = args.language
 				return true
-			end)
+			end, true)
 		)
 		return
 	end
 	if not actionLimiter:allow(tostring(player.UserId) .. ":" .. action, os.clock()) then
 		return
 	end
+	if expansion then
+		expansion:touch(player)
+		if expansion:handle(player, action, args) then
+			return
+		end
+	end
 	if action == "Deposit" then
 		if not at(player, "depot") then
 			return report(player, false, "too_far")
 		end
 		local delivered = cargo[player]
+		local storagePass = expansion and expansion.commerce:owns(player, "storage") or false
+		if expansion and not expansion.vehicles:canUnload(player, World:getGarage(player).depot.Position) then
+			return report(player, false, "bring_vehicle")
+		end
 		local ok, reason = Profiles:mutate(player, function(data)
-			return Rules:deposit(data, delivered, false)
+			if #delivered == 0 and expansion and data.quests.nightVisited and not data.quests.nightDone then
+				expansion:delivered(player, data, 0)
+				return true
+			end
+			local deposited, why = Rules:deposit(data, delivered, storagePass)
+			if deposited and expansion then
+				expansion:delivered(player, data, #delivered)
+			end
+			return deposited, why
 		end)
 		if ok then
 			cargo[player] = {}
+			if expansion then
+				expansion.vehicles:clearCargo(player)
+			end
 			notice:FireClient(player, "deposited")
 		end
 		report(player, ok, reason)
@@ -245,8 +303,14 @@ local function dispatch(player, action, args)
 			else
 				return Rules:dismantle(data, args.id)
 			end
-		end)
+		end, action == "FinishRepair")
 		if ok then
+			if expansion and action == "BeginRepair" then
+				local root = player.Character and player.Character:FindFirstChild("HumanoidRootPart")
+				if root then
+					expansion.night:noise(root.Position, 45, player.UserId)
+				end
+			end
 			if action == "Sell" or action == "Dismantle" then
 				if visuals[player] then
 					visuals[player]:Destroy()
@@ -261,6 +325,11 @@ local function dispatch(player, action, args)
 end
 request.OnServerEvent:Connect(dispatch)
 
+local testFolder = game:GetService("ServerStorage"):FindFirstChild("GarageTests")
+if game:GetService("RunService"):IsStudio() and testFolder and testFolder:FindFirstChild("TestDriver") then
+	require(testFolder.TestDriver)({ profiles = Profiles, world = World, cargo = cargo })
+end
+
 for _, garage in ipairs(World.garages) do
 	World.prompt(garage.depot, "Deposit", "СДАТЬ ГРУЗ / UNLOAD", function(player)
 		if garage.owner == player then
@@ -268,13 +337,21 @@ for _, garage in ipairs(World.garages) do
 		end
 	end)
 	World.prompt(garage.bench, "Workbench", "ВЕРСТАК / WORKBENCH", function(player)
-		if garage.owner == player and World:near(player, garage.bench) then
+		if
+			garage.owner == player
+			and World:near(player, garage.bench)
+			and limiter:allow(player, os.clock())
+		then
 			push(player)
 			openPanel:FireClient(player, "workbench")
 		end
 	end)
 	World.prompt(garage.shop, "Shop", "МАГАЗИН / SHOP", function(player)
-		if garage.owner == player and World:near(player, garage.shop) then
+		if
+			garage.owner == player
+			and World:near(player, garage.shop)
+			and limiter:allow(player, os.clock())
+		then
 			push(player)
 			openPanel:FireClient(player, "shop")
 		end
@@ -284,6 +361,18 @@ end
 local function spawnFind(spot)
 	local roll = random:NextNumber()
 	local kind = roll < 0.7 and Config.PrototypeItems[random:NextInteger(1, 3)] or "radio"
+	if expansion then
+		local first = expansion.night.night and 0.4 or 0.6
+		local second = expansion.night.night and 0.8 or 0.9
+		local tier = roll < first and 1 or (roll < second and 2 or 3)
+		local options = {}
+		for _, key in ipairs(Config.CatalogOrder) do
+			if Config.Items[key].tier == tier then
+				table.insert(options, key)
+			end
+		end
+		kind = options[random:NextInteger(1, #options)]
+	end
 	spot.kind = kind
 	spot.id = id()
 	local model, primary = World:container(spot.position, Config.Items[kind].category)
@@ -306,6 +395,9 @@ local function characterReady(player, character)
 	if humanoid then
 		humanoid.Died:Connect(function()
 			cargo[player] = {}
+			if expansion then
+				expansion.vehicles:stop(player)
+			end
 			push(player)
 			task.delay(5, function()
 				spawnTutorial(player)
@@ -313,6 +405,7 @@ local function characterReady(player, character)
 		end)
 	end
 	spawnTutorial(player)
+	push(player)
 end
 
 local function joined(player)
@@ -331,11 +424,21 @@ local function joined(player)
 	if player.Character then
 		characterReady(player, player.Character)
 	end
+	if expansion then
+		expansion:onChanged(player)
+		task.spawn(function()
+			expansion.commerce:refresh(player)
+		end)
+	end
 	push(player)
 end
 Players.PlayerAdded:Connect(joined)
 Players.PlayerRemoving:Connect(function(player)
+	if expansion then
+		expansion:release(player)
+	end
 	cargo[player] = nil
+	CarryVisual:clear(player)
 	local tutorial = tutorialModels[player]
 	if tutorial and tutorial.model then
 		tutorial.model:Destroy()
@@ -369,4 +472,4 @@ task.spawn(function()
 	end
 end)
 
-print("[Garage] Prototype ready. Four finds; six garages; persistent profiles (Mock in Studio).")
+print("[Garage] " .. Config.Version .. " ready; profiles use Mock in Studio.")

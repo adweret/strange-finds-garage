@@ -47,6 +47,11 @@
         "RespectFilteringEnabled": true
       }
     },
+    "StarterGui": {
+      "$properties": {
+        "ScreenOrientation": "LandscapeSensor"
+      }
+    },
     "ServerStorage": {
       "TestEZ": {
         "$path": "vendor/TestEZ"

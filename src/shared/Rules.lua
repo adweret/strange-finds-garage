@@ -16,6 +16,12 @@ function Rules:find(data, id)
 			return item, index
 		end
 	end
+	for _, kind in ipairs({ "radio", "robot" }) do
+		local equipment = data.equipment[kind]
+		if type(equipment) == "table" and equipment.id == id then
+			return equipment
+		end
+	end
 	return nil
 end
 
@@ -112,6 +118,15 @@ function Rules:finishRepair(data, id, now)
 	data.repair = nil
 	if item.stage == 3 then
 		self:register(data, item.kind)
+		if item.bound then
+			data.equipment[item.kind] = true
+		end
+		local queue = data.quests.repairQueue or {}
+		for index = #queue, 1, -1 do
+			if queue[index] == id then
+				table.remove(queue, index)
+			end
+		end
 	end
 	return true
 end
@@ -144,6 +159,12 @@ function Rules:dismantle(data, id)
 		return false, "repair_busy"
 	end
 	data.parts += self.config.Items[item.kind].parts
+	local queue = data.quests.repairQueue or {}
+	for queued = #queue, 1, -1 do
+		if queue[queued] == id then
+			table.remove(queue, queued)
+		end
+	end
 	if item.kind == "fan" then
 		data.quests.dismantledFan = true
 	end

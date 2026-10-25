@@ -4,6 +4,7 @@ local Shared = game:GetService("ReplicatedStorage"):WaitForChild("Garage")
 local Config = require(Shared.Config)
 local Schema = require(Shared.Schema)
 local Atomic = require(Shared.Atomic)
+local SessionStart = require(Shared.SessionStart)
 local ProfileStore = require(script.Parent.Parent.Vendor.ProfileStore)
 
 local Profiles = { sessions = {}, critical = false, listeners = {}, saveQueued = {} }
@@ -36,35 +37,33 @@ function Profiles:mutate(player, operation, important)
 	if not success then
 		return false, reason
 	end
-	if important and not self.saveQueued[profile] then
-		self.saveQueued[profile] = true
-		task.defer(function()
-			if profile:IsActive() then
-				profile:Save()
-			end
-			task.delay(5, function()
-				self.saveQueued[profile] = nil
+	if important then
+		local queued = self.saveQueued[profile]
+		if queued then
+			queued.revision = profile.Data.revision
+		else
+			queued = { revision = profile.Data.revision }
+			self.saveQueued[profile] = queued
+			task.defer(function()
+				while profile:IsActive() and self.saveQueued[profile] == queued do
+					local requested = queued.revision
+					profile:Save()
+					task.wait(5)
+					if queued.revision <= requested then
+						self.saveQueued[profile] = nil
+					end
+				end
 			end)
-		end)
+		end
 	end
 	self:notify(player)
 	return true, reason
 end
 
 function Profiles:load(player)
-	local ok, profile = pcall(function()
-		return store:StartSessionAsync(Config.Environment .. ":" .. tostring(player.UserId), {
-			Cancel = function()
-				return player.Parent ~= Players
-			end,
-		})
-	end)
-	if not ok or not profile then
-		if player.Parent == Players then
-			player:Kick(
-				"Не удалось загрузить прогресс. Пожалуйста, войди снова. / Could not load progress. Please rejoin."
-			)
-		end
+	local profile =
+		SessionStart.run(store, Config.Environment .. ":" .. tostring(player.UserId), player, Players)
+	if not profile then
 		return false
 	end
 	local data, reason = Schema.migrate(profile.Data, Config.Items)
@@ -83,6 +82,7 @@ function Profiles:load(player)
 	profile:AddUserId(player.UserId)
 	profile.OnSessionEnd:Connect(function()
 		self.sessions[player] = nil
+		self.saveQueued[profile] = nil
 		if player.Parent == Players then
 			player:Kick(
 				"Сессия прогресса завершена. Войди снова. / Progress session ended. Please rejoin."
@@ -96,6 +96,12 @@ function Profiles:load(player)
 	end)
 	if player.Parent ~= Players then
 		profile:EndSession()
+		return false
+	end
+	if not profile:IsActive() then
+		player:Kick(
+			"Сессия прогресса завершена. Войди снова. / Progress session ended. Please rejoin."
+		)
 		return false
 	end
 	self.sessions[player] = profile
@@ -123,6 +129,7 @@ ProfileStore.OnCriticalToggle:Connect(function(critical)
 end)
 
 ProfileStore.OnError:Connect(function(message)
+	Profiles.errorCount = (Profiles.errorCount or 0) + 1
 	warn("[Garage persistence] " .. tostring(message))
 end)
 

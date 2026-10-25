@@ -304,7 +304,17 @@ end
 function World:release(player)
 	local garage = self:getGarage(player)
 	if garage then
+		for _, child in ipairs(garage.model:GetChildren()) do
+			if
+				string.sub(child.Name, 1, 10) == "Collection"
+				or string.sub(child.Name, 1, 6) == "Decor_"
+				or string.sub(child.Name, 1, 7) == "Premium"
+			then
+				child:Destroy()
+			end
+		end
 		garage.owner = nil
+		garage.displaySignature = nil
 		garage.board.SurfaceGui.TextLabel.Text = "ГАРАЖ / GARAGE"
 		garage.model:SetAttribute("OwnerUserId", nil)
 	end
@@ -372,12 +382,187 @@ function World:itemVisual(kind, position, color)
 			part(model, "Fan", Vector3.new(2.8, 2.8, 0.7), position + Vector3.new(0, 2, 0), colors.cream)
 		fan.Shape = Enum.PartType.Ball
 		part(model, "Blade", Vector3.new(2, 0.3, 0.8), position + Vector3.new(0, 2, -0.5), color)
+	elseif kind == "robot" then
+		part(model, "Head", Vector3.new(2, 1.5, 1.5), position + Vector3.new(0, 1.7, 0), color)
+		for _, x in ipairs({ -0.45, 0.45 }) do
+			part(
+				model,
+				"Eye",
+				Vector3.new(0.25, 0.25, 0.15),
+				position + Vector3.new(x, 1.8, -0.8),
+				colors.ink
+			)
+			part(model, "Foot", Vector3.new(0.7, 0.5, 1), position + Vector3.new(x, -1, 0), colors.ink)
+		end
+		part(model, "Arm", Vector3.new(4, 0.5, 0.5), position + Vector3.new(0, 0.1, 0), color)
+	elseif kind == "helicopter" then
+		part(model, "Cockpit", Vector3.new(1.6, 1.3, 1.6), position + Vector3.new(0, 0.5, -0.5), colors.teal)
+		part(model, "Rotor", Vector3.new(6, 0.15, 0.4), position + Vector3.new(0, 1.8, 0), colors.ink)
+		part(model, "Tail", Vector3.new(0.5, 0.5, 3), position + Vector3.new(0, 0.2, 2), color)
+	elseif kind == "train" then
+		part(model, "Chimney", Vector3.new(0.6, 1.3, 0.6), position + Vector3.new(0, 1.2, -0.6), colors.ink)
+		part(model, "Cab", Vector3.new(2, 1.6, 1), position + Vector3.new(0, 1, 0.7), color)
+		for _, x in ipairs({ -1.5, 1.5 }) do
+			for _, z in ipairs({ -0.7, 0.7 }) do
+				local wheel = part(
+					model,
+					"Wheel",
+					Vector3.new(0.6, 0.6, 0.6),
+					position + Vector3.new(x, -0.8, z),
+					colors.ink
+				)
+				wheel.Shape = Enum.PartType.Ball
+			end
+		end
+	elseif kind == "battery" then
+		for _, x in ipairs({ -0.8, 0.8 }) do
+			part(model, "Terminal", Vector3.new(0.5, 0.4, 0.5), position + Vector3.new(x, 1, 0), colors.ink)
+		end
+	elseif kind == "generator" then
+		part(model, "Motor", Vector3.new(2, 2, 2), position + Vector3.new(0, 0.5, 0), colors.ink)
+		part(model, "Handle", Vector3.new(4, 0.3, 0.3), position + Vector3.new(0, 2, 0), color)
+		part(model, "Exhaust", Vector3.new(0.5, 1, 0.5), position + Vector3.new(1.2, 1.2, 0), colors.cream)
+	elseif kind == "meter" then
+		part(model, "Display", Vector3.new(2, 0.8, 0.2), position + Vector3.new(0, 0.25, -1.1), colors.teal)
+		part(
+			model,
+			"Needle",
+			Vector3.new(0.1, 0.6, 0.1),
+			position + Vector3.new(0.4, 0.3, -1.25),
+			colors.cream
+		)
 	else
 		part(model, "Dial", Vector3.new(0.7, 0.7, 0.2), position + Vector3.new(0.8, 0, -1.1), colors.cream)
 		part(model, "Speaker", Vector3.new(1.2, 1, 0.2), position + Vector3.new(-0.6, 0, -1.1), colors.ink)
 		part(model, "Antenna", Vector3.new(0.1, 2, 0.1), position + Vector3.new(1, 1.8, 0), colors.ink)
 	end
 	return model
+end
+
+function World:applyAppearance(player, data, paidDecor)
+	local garage = self:getGarage(player)
+	if not garage then
+		return
+	end
+	local signature = ""
+	for _, item in ipairs(data.items) do
+		if item.display and item.stage == 3 then
+			signature ..= item.id .. ";"
+		end
+	end
+	if garage.displaySignature ~= signature then
+		garage.displaySignature = signature
+		local display = garage.model:FindFirstChild("CollectionDisplay")
+		if display then
+			display:Destroy()
+		end
+		display = Instance.new("Folder")
+		display.Name = "CollectionDisplay"
+		display.Parent = garage.model
+		local slot = 0
+		for _, item in ipairs(data.items) do
+			if item.display and item.stage == 3 and slot < 3 then
+				slot += 1
+				part(
+					display,
+					"Plinth",
+					Vector3.new(5, 2, 5),
+					garage.origin + Vector3.new(-14 + (slot - 1) * 8, 2.5, -3),
+					colors.teal
+				)
+				local visual = self:itemVisual(
+					item.kind,
+					garage.origin + Vector3.new(-14 + (slot - 1) * 8, 4.5, -3),
+					colors.cream
+				)
+				visual.Parent = display
+			end
+		end
+	end
+	local palettes = {
+		default = colors.cream,
+		mint = Color3.fromRGB(166, 210, 186),
+		rust = Color3.fromRGB(193, 137, 107),
+		workshop = Color3.fromRGB(126, 161, 171),
+		observatory = Color3.fromRGB(111, 111, 149),
+	}
+	for _, child in ipairs(garage.model:GetChildren()) do
+		if child.Name == "Back" or child.Name == "Side" then
+			child.Color = palettes[data.theme] or colors.cream
+		end
+	end
+	if data.cosmetics.shelf and not garage.model:FindFirstChild("CollectionShelf") then
+		part(
+			garage.model,
+			"CollectionShelf",
+			Vector3.new(10, 0.5, 3),
+			garage.origin + Vector3.new(3, 9, 16),
+			colors.wood
+		)
+	end
+	if data.cosmetics.trophy and not garage.model:FindFirstChild("CollectionTrophy") then
+		part(
+			garage.model,
+			"CollectionTrophy",
+			Vector3.new(1.5, 3, 1.5),
+			garage.origin + Vector3.new(3, 10.5, 16),
+			Color3.fromRGB(227, 184, 87),
+			Enum.Material.Metal
+		)
+	end
+	if paidDecor and not garage.model:FindFirstChild("PremiumCabinet") then
+		part(
+			garage.model,
+			"PremiumCabinet",
+			Vector3.new(5, 8, 3),
+			garage.origin + Vector3.new(15, 5, -7),
+			colors.teal
+		)
+		sign(
+			garage.model,
+			"PremiumSign",
+			garage.origin + Vector3.new(0, 11, 17),
+			Vector3.new(12, 2, 0.2),
+			"SECOND CHANCE"
+		)
+		local lamp = part(
+			garage.model,
+			"PremiumLamp",
+			Vector3.new(1, 1, 1),
+			garage.origin + Vector3.new(-14, 10, 10),
+			colors.cream,
+			Enum.Material.Neon
+		)
+		local light = Instance.new("PointLight")
+		light.Color = colors.cream
+		light.Range = 18
+		light.Brightness = 1
+		light.Parent = lamp
+	end
+	if data.cosmetics.robotSticker and not garage.model:FindFirstChild("Decor_RobotSticker") then
+		sign(
+			garage.model,
+			"Decor_RobotSticker",
+			garage.origin + Vector3.new(-10, 6, 17),
+			Vector3.new(3, 3, 0.2),
+			"[ R ]\n4 / 4"
+		)
+	end
+	local cacheCount = 0
+	for key, owned in pairs(data.cosmetics) do
+		if owned and string.sub(key, 1, 5) == "cache" then
+			cacheCount += 1
+			if not garage.model:FindFirstChild("Decor_" .. key) then
+				part(
+					garage.model,
+					"Decor_" .. key,
+					Vector3.new(0.8, 1.3, 0.8),
+					garage.origin + Vector3.new(-3 + cacheCount, 8, 17),
+					colors.rust
+				)
+			end
+		end
+	end
 end
 
 return World

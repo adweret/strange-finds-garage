@@ -1,0 +1,1 @@
+2026-10-24T11:45:51.329Z,80.329308,30dc,6,Info [FLog::CreatorOutput] [Garage Six QA] {"ok":true,"unit":{"skipped":0,"passed":48,"failed":0},"clients":6,"checks":["Unique garages","Mock profile per client","Foreign and repeated sales rejected","One winner for shared find","Deposit exactly once"]}
